@@ -1,0 +1,192 @@
+import React from 'react';
+import {
+    Button,
+    Div,
+    FormLayout,
+    FormLayoutGroup,
+    Group,
+    Separator,
+    Panel,
+    PanelHeader,
+    HeaderButton,
+    PanelHeaderContent,
+    Avatar,
+    View
+} from '@vkontakte/vkui';
+import './common.css';
+import '@vkontakte/vkui/dist/vkui.css';
+import { Input,Checkbox} from "@happysanta/vk-app-ui"
+import qrCodeGenerator from '@vkontakte/vk-qr';
+import Download from '@axetroy/react-download';
+import Icon24Download from '@vkontakte/icons/dist/24/download';
+import {saveSvgAsPng} from 'save-svg-as-png';
+import {CirclePicker} from 'react-color';
+import queryString from 'query-string'
+
+import Icon36LogoVk from '@vkontakte/icons/dist/36/logo_vk';
+import Icon28QrCodeOutline from '@vkontakte/icons/dist/28/qr_code_outline';
+
+class App extends React.Component {
+    constructor(props) {
+        super(props);
+
+        this.state = {
+            url: 'https://vk.cc/al5FPd',
+            isShowLogo: true,
+            logoData: false,
+            isShowBackground: true,
+            backgroundColor: '#ffffff',
+            foregroundColor: '#000000',
+            allowDownload: false
+        };
+
+        this.svgRef = React.createRef();
+
+        this.onChange = this.onChange.bind(this);
+        this.onUpload = this.onUpload.bind(this);
+        this.savePNG = this.savePNG.bind(this);
+    }
+
+    componentDidMount() {
+        const values = queryString.parse(window.location.search);
+        let platformsWithoutDownload = ['mobile_android', 'mobile_iphone'];
+        this.setState({allowDownload: platformsWithoutDownload.indexOf(values.vk_platform) == -1});
+    }
+
+    savePNG() {
+        saveSvgAsPng(this.svgRef.current.children[0], 'png.png')
+    }
+
+    onUpload(e) {
+        let self = this;
+        let file = e.currentTarget.files[0];
+        if (file && file.type === 'image/svg+xml') {
+            let reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = function () {
+                self.setState({
+                    logoData: reader.result
+                });
+            };
+        }
+    }
+
+    onChange(e) {
+        const {name, value, checked} = e.currentTarget;
+        if (name === 'isShowLogo' || name === 'isShowBackground') {
+            this.setState({[name]: checked});
+        } else {
+            this.setState({[name]: value});
+        }
+    }
+
+    onBackgroundColorChange = (color) => {
+        this.setState({backgroundColor: color.hex});
+    };
+
+    onForegroundColorChange = (color) => {
+        this.setState({foregroundColor: color.hex});
+    };
+
+    render() {
+        const {allowDownload, url, isShowLogo, isShowBackground, backgroundColor, foregroundColor, logoData} = this.state;
+        const options = {
+            isShowLogo: isShowLogo,
+            isShowBackground: isShowBackground,
+            backgroundColor: backgroundColor,
+            foregroundColor: foregroundColor,
+            logoData: logoData,
+        };
+
+        const qrSvg = qrCodeGenerator.createQR(url, 256, 'classCode', options);
+
+        let backgroundPresets = ['#FFFFFF', '#FF6900', '#FCB900', '#7BDCB5', '#00D084', '#8ED1FC'];
+        let foregroundPresets = ['#000000', '#FF6900', '#FCB900', '#7BDCB5', '#00D084', '#8ED1FC'];
+
+        return (
+            <View activePanel="mainPanel">
+                <Panel id="mainPanel">
+
+                    <Group style={{marginTop: "-5%"}} title="Ссылка">
+                    <Separator />
+                        <FormLayout className="NameUrl">
+                            <Input
+                                className="NameUrl"
+                                type="string"
+                                name="url"
+                                value={url}
+                                onChange={this.onChange}
+                                status={url ? 'valid' : 'error'}
+                                bottom={url ? '' : 'Введите ссылку'}
+                            />
+                        </FormLayout>
+                    </Group>
+                    <Group title="Настройки">
+                    <Separator />
+                        <FormLayout>
+                            <Checkbox  mobile={false}name="isShowLogo" checked={isShowLogo} onChange={this.onChange}>Использовать
+                                логотип
+                            </Checkbox>
+
+                            {isShowLogo ? (<Input className="File" mobile={true} top="SVG-логотип" type="file" name="embed" onChange={this.onUpload}
+                                                  accept="image/svg+xml"/>) : (null)}
+                            {isShowLogo ? (<FormLayoutGroup top="Цвет QR-кода">
+                                <Div>
+                                    <div style={{
+                                        borderRadius: 25,
+                                        background: 'var(--background_page)',
+                                        padding: 5,
+                                        display: 'flex',
+                                        justifyContent: 'center'
+                                    }}>
+                                        <CirclePicker triangle='hide' colors={foregroundPresets} color={foregroundColor}
+                                                      onChangeComplete={this.onForegroundColorChange}/>
+                                    </div>
+                                </Div>
+                            </FormLayoutGroup>) : (null)}
+
+
+                            <Checkbox mobile={false} name="isShowBackground" checked={isShowBackground}
+                                      onChange={this.onChange}>Фон</Checkbox>
+
+                            {isShowBackground ? (<FormLayoutGroup top="Цвет фона">
+                                <Div>
+                                    <div style={{
+                                        borderRadius: 25,
+                                        background: 'var(--background_page)',
+                                        padding: 5,
+                                        display: 'flex',
+                                        justifyContent: 'center'
+                                    }}>
+                                        <CirclePicker style={{backgroundColor: 'red'}} triangle='hide'
+                                                      colors={backgroundPresets} color={backgroundColor}
+                                                      onChangeComplete={this.onBackgroundColorChange}/>
+                                    </div>
+                                </Div>
+                            </FormLayoutGroup>) : (null)}
+                        </FormLayout>
+
+                    </Group>
+
+                    <Div>
+                        <Div style={{
+                            textAlign: 'center',
+                        }}>
+                            <span ref={this.svgRef} dangerouslySetInnerHTML={{__html: url ? qrSvg : ''}}/>
+                        </Div>
+
+                        {allowDownload ? (<Div style={{display: 'flex', 'justifyContent': 'space-between'}}>
+                            <Button before={<Icon24Download/>} size="xl" style={{maxWidth: 'calc(50% - 4px)'}}
+                                    onClick={this.savePNG} stretched>PNG</Button>
+                            <Download file="qr.svg" content={qrSvg} style={{flexGrow: 1, maxWidth: 'calc(50% - 4px)'}}>
+                                <Button before={<Icon24Download/>} size="xl" stretched>SVG</Button>
+                            </Download>
+                        </Div>) : (null)}
+                    </Div>
+                </Panel>
+            </View>
+        );
+    }
+}
+
+export default App;
